@@ -29,6 +29,22 @@ data class WaterDayGroupUi(
     val logs: List<WaterLogUi>
 )
 
+data class WaterUiState(
+    val total: Int = 0,
+    val goal: Int = 2000,
+) {
+    val progress: Float
+        get() = (total.toFloat() / goal).coerceIn(0f, 1f)
+
+    val remaining: Int
+        get() = (goal - total).coerceAtLeast(0)
+
+    val isGoalReached: Boolean
+        get() = total >= goal
+}
+
+
+
 class WaterViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = Room.databaseBuilder(
@@ -43,6 +59,13 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     val todayTotal = dao.observeTotal(todayKey)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    val uiState = todayTotal
+        .map { total ->
+            WaterUiState(total = total)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WaterUiState())
+
+
     fun addWater(amountMl: Int) {
         viewModelScope.launch {
             dao.insert(
@@ -56,6 +79,7 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
             dao.deleteById(id)
         }
     }
+
 
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
